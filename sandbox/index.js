@@ -1,4 +1,5 @@
 const xlsx = require('xlsx');
+const fs = require('fs');
 
 // Load the workbook
 const workbook = xlsx.readFile('./stocks.xlsx');
@@ -18,4 +19,4 @@ jsonData.forEach((stock, index) => {
     }
 })
 
-console.log(JSON.stringify(tickers))
+fs.writeFileSync("./stocks.txt", JSON.stringify(jsonData));
