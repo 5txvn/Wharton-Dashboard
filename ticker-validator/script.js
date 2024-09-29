@@ -4,11 +4,9 @@ $("#table").hide();
 $("#tickerValidate").focus();
 
 $("#tickerValidate").on("input", () => {
-    console.log("recieved")
     if (tickers.includes($("#tickerValidate").val().toUpperCase().trim())) {
         $("#messageText").removeClass("text-error").removeClass("text-success").addClass("text-success").removeClass("mt-6").text("Current ticker is a valid ticker");
         const currentStock = stocks.find(stock => stock[1] == $("#tickerValidate").val().toUpperCase().trim());
-        console.log(currentStock)
         $("#companyName").text(currentStock[0]);
         $("#ticker").text(currentStock[1]);
         $("#exchange").text(currentStock[2]);
