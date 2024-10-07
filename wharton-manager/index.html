@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wharton Manager</title>
+    <!-- import tailwind and daisyui -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.12/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- import jquery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+    <!-- import fontawesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+    <div class="relative min-h-screen">
+        <div id="output" class="pt-4 overflow-y-scroll ml-[2.5vw] mr-[2.5vw] text-2xl" style="height: calc(100vh - 80px); scrollbar-width: none; -ms-overflow-style: none">
+            <p class="font-extrabold">Enter commands in the input below, type help for a list of commands if needed...</p>
+            <hr class="mt-2 mb-2">
+        </div>
+        <div class="flex flex-row w-full justify-center absolute bottom-4">
+            <input class="input input-bordered h-16 w-[85%] rounded-l-xl rounded-r-[0px]" placleholder="Enter command here...">
+            <button class="btn btn-neutral w-[5%] h-16 text-4xl rounded-l-[0px] rounded-r-[0px]"><i class="fa fa-gear"></i></button>
+            <button class="btn btn-info w-[5%] h-16 text-4xl text-white rounded-l-[0px] rounded-r-xl"><i class="fa fa-question"></i></button>
+        </div>
+    </div>
+</body>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+    //init necessary stuff
+    const socket = io();
+    let puppeteerBusy = false;
+    $("input").focus();
+
+
+    socket.on("connected", () => {
+        console.log("connected")
+    })
+    //functions for messaging in the input
+    function output(message, flags) {
+        let classString = "";
+        flags.forEach(flag => {
+            switch(flag) {
+                case "bold":
+                    classString += "font-bold ";
+                    break;
+                case "underline":
+                    classString += "underline ";
+                    break;
+                case "success":
+                    classString += "text-success ";
+                    break;
+                case "warning":
+                    classString += "text-warning ";
+                    break;
+                case "error":
+                    classString += "text-error ";
+                    break;
+                default:
+                    null;
+            }
+        });
+        classString = classString.slice(0, -1);
+        $("#output").append(`<p class="${classString}">${message}</p>`);
+    }
+
+    //socketio handlers
+    socket.on("portfolio value", value => { output(`Current portfolio value is <b>${value}</b>`, ["success"]); });
+    socket.on("portfolio return", portfolioReturn => { output(`Current portfolio return is <b>${portfolioReturn}</b>`, ["success"]); });
+    socket.on("cash balance", cashBalance => { output(`Current cash balance is <b>${cashBalance}</b>`, ["success"]); });
+    socket.on("buying power", buyingPower => { output(`Current buying power is <b>${buyingPower}</b>`, ["success"]); });
+    socket.on("ranking", ranking => { output(`Current ranking is <b>${ranking.split("/")[0].trim()}</b> out of <b>${ranking.split("/")[1].trim()}</b>`, ["success"]); });
+    socket.on("trades made", tradesMade => { output(`Current trades made is <b>${tradesMade.split("/")[0].trim()}</b> out of <b>${tradesMade.split("/")[1].trim()}</b> allowed`, ["success"]); });
+
+    socket.on("ticker price", value => {
+        console.log("recieved");
+        console.log(value);
+        if(!value) {
+            output(`Error, an invalid ticker was inputted`, ["error", "bold"]);
+        } else {
+            output(`The price of ticker <b>${value[0]}</b> is <b>${value[1]}</b>`, ["success"]);
+        }
+    });
+    socket.on("ticker day change", value => {
+        if (!value) {
+            output("Error, you inputted an invalid ticker or the day change couldn't be fetched", ["error", "bold"]);
+        } else {
+            output(`The daily change of ticker <b>${value[0]}</b> is <b>$${value[1]}</b>`, ["success"]);
+        }
+    })
+
+    socket.on("busy", () => {
+        puppeteerBusy = true;
+    })
+    socket.on("notBusy", () => {
+        puppeteerBusy = false;
+    })
+
+    //input handling
+    $("input").on("keypress", event => {
+        if (event.which === 13) {
+            console.log("reached")
+            event.preventDefault();
+            if (puppeteerBusy) {
+                output("Puppeteer is currently busy, please wait until Puppeteer is no longer busy...", ["error", "bold"]);
+            } else {
+                //handle specific input commands
+                switch($("input").val().toLowerCase().trim()) {
+                    case "clear":
+                        $("#output").html("");
+                        output("Terminal has successfully been cleared!", ["success", "bold"]);
+                        break;
+                    case "portfolio value":
+                        socket.emit("busy"); socket.emit("portfolio value");
+                        output("Fetching portfolio value...", ["bold"]);
+                        break;
+                    case "portfolio return":
+                        socket.emit("busy"); socket.emit("portfolio return");
+                        output("Fetching portfolio return...", ["bold"]);
+                        break;
+                    case "cash balance":
+                        socket.emit("busy"); socket.emit("cash balance");
+                        output("Fetching cash balance...", ["bold"]);
+                        break;
+                    case "buying power":
+                        socket.emit("busy"); socket.emit("buying power");
+                        output("Fetching buying power...", ["bold"]);
+                        break;
+                    case "ranking":
+                        socket.emit("busy"); socket.emit("ranking");
+                        output("Fetching ranking...", ["bold"]);
+                        break;
+                    case "trades made":
+                        socket.emit("busy"); socket.emit("trades made");
+                        output("Fetching trades made...", ["bold"]);
+                        break;
+                    default:
+                        null;
+                }
+                if($("input").val().toLowerCase().trim().startsWith("price of")) {
+                    const ticker = $("input").val().toLowerCase().trim().split(" ")[2].toUpperCase();
+                    output(`Fetching price of ${ticker}...`, ["bold"])
+                    socket.emit("busy"); socket.emit("ticker price", ticker);
+                } else if ($("input").val().toLowerCase().trim().startsWith("day change of")) {
+                    const ticker = $("input").val().toLowerCase().trim().split(" ")[3].toUpperCase();
+                    output(`Fetching day change of ${ticker}...`, ["bold"])
+                    socket.emit("busy"); socket.emit("ticker day change", ticker);
+                }
+            }
+            $("input").val("")
+        }
+    })
+</script>
+<style>
+    div::-webkit-scrollbar {
+        display: none;
+    }
+    input:focus {
+        border-color: inherit; /* or specify the original border color */
+        box-shadow: none; /* Remove any box shadow */
+        outline: none; /* Remove outline if present */
+    }
+</style>
+</html>

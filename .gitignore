@@ -1,1 +1,4 @@
 sandbox
+wharton-manager/.env
+wharton-manager/node_modules
+wharton-manager/package-lock.json
